@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>EcoSnap — Carbon Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>.glass{background:rgba(255,255,255,0.04);backdrop-filter:blur(6px)} .card{box-shadow:0 8px 30px rgba(2,6,23,0.4)}</style>
+</head>
+<body class="bg-gradient-to-br from-emerald-700 via-slate-900 to-emerald-800 text-slate-100 min-h-screen">
+  <nav class="bg-slate-900/30 glass sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto flex items-center justify-between p-4">
+      <div class="flex items-center gap-3"><div class="text-2xl">🌿</div><a href="index.html" class="font-bold text-lg">EcoSnap</a></div>
+      <div class="flex gap-3">
+        <a href="index.html" class="px-3 py-2 rounded hover:bg-white/5">Detect</a>
+        <a href="carbon.html" class="px-3 py-2 rounded hover:bg-white/5">Carbon Calc</a>
+        <a href="waste.html" class="px-3 py-2 rounded hover:bg-white/5">Tracker</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto p-6">
+    <section class="card glass rounded-xl p-6" data-aos="fade-up">
+      <h1 class="text-2xl font-extrabold mb-2">Carbon Footprint Calculator</h1>
+      <p class="text-emerald-200 mb-4">Quick daily carbon estimate from travel, electricity, diet and waste. Get personalized tips and a weekly plan.</p>
+
+      <form id="carbonForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold">Daily car km</label>
+          <input id="carKm" type="number" min="0" class="w-full p-2 rounded bg-white/5"/>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold">Public transport km</label>
+          <input id="ptKm" type="number" min="0" class="w-full p-2 rounded bg-white/5"/>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold">Daily flight minutes (approx time)</label>
+          <input id="flightMin" type="number" min="0" class="w-full p-2 rounded bg-white/5"/>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold">Electricity (kWh/day)</label>
+          <input id="elec" type="number" min="0" class="w-full p-2 rounded bg-white/5"/>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold">Diet</label>
+          <select id="diet" class="w-full p-2 rounded bg-white/5">
+            <option value="vegan">Vegan</option>
+            <option value="vegetarian">Vegetarian</option>
+            <option value="mixed">Mixed</option>
+            <option value="meat">Meat-heavy</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold">Daily waste (kg)</label>
+          <input id="waste" type="number" min="0" class="w-full p-2 rounded bg-white/5"/>
+        </div>
+
+        <div class="md:col-span-2 flex gap-2 mt-2">
+          <button id="calcBtn" class="px-4 py-2 bg-emerald-500 rounded">Calculate</button>
+          <button id="saveProfile" class="px-4 py-2 bg-white/5 rounded">Save Profile (local)</button>
+          <button id="reset" class="px-4 py-2 bg-red-600 rounded">Reset</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="results" class="card glass rounded-xl p-6 mt-6 hidden" data-aos="fade-up">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-semibold">Results</h2>
+        <div class="text-emerald-200 text-sm">Daily & yearly estimate</div>
+      </div>
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <div class="text-sm text-emerald-200">Daily CO₂ (kg)</div>
+          <div id="dailyVal" class="text-3xl font-bold mt-1"></div>
+          <div class="text-sm text-emerald-200 mt-2">Yearly ≈ <span id="yearlyVal" class="font-semibold"></span> tons</div>
+        </div>
+        <div>
+          <canvas id="breakChart" style="max-height:220px"></canvas>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <h3 class="font-semibold">AI Tips & Weekly Plan</h3>
+        <div id="tipsArea" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-6xl mx-auto p-4 text-center text-sm text-emerald-200/60">Powered by AI — Helping you live greener 🌍</footer>
+
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script>
+    AOS.init();
+    // Elements
+    const carKm = document.getElementById('carKm'), ptKm = document.getElementById('ptKm'), flightMin = document.getElementById('flightMin'),
+          elec = document.getElementById('elec'), diet = document.getElementById('diet'), waste = document.getElementById('waste'),
+          calcBtn = document.getElementById('calcBtn'), results = document.getElementById('results'),
+          dailyVal = document.getElementById('dailyVal'), yearlyVal = document.getElementById('yearlyVal'), tipsArea = document.getElementById('tipsArea'),
+          breakChart = document.getElementById('breakChart').getContext('2d'), saveProfile = document.getElementById('saveProfile'), resetBtn = document.getElementById('reset');
+
+    // Simple emission factors (demo, approximations)
+    // car: 0.21 kg CO2 per km (average small car), public transport: 0.05, flight: 0.255 kg CO2 per minute (approx short flights)
+    // electricity: 0.475 kg CO2 per kWh (global average - adjust in README), waste: 0.1 per kg
+    function compute() {
+      const car = parseFloat(carKm.value) || 0;
+      const pt = parseFloat(ptKm.value) || 0;
+      const flMin = parseFloat(flightMin.value) || 0;
+      const el = parseFloat(elec.value) || 0;
+      const ws = parseFloat(waste.value) || 0;
+      const dietMap = { vegan:1.8, vegetarian:2.8, mixed:5, meat:7 }; // kg CO2/day approximations
+      const travelCO2 = (car*0.21) + (pt*0.05) + (flMin*0.255);
+      const energyCO2 = el*0.475;
+      const dietCO2 = dietMap[diet.value || diet] || 5;
+      const wasteCO2 = ws*0.1;
+      const total = travelCO2 + energyCO2 + dietCO2 + wasteCO2;
+      return { travelCO2, energyCO2, dietCO2, wasteCO2, total };
+    }
+
+    let chartObj = null;
+    calcBtn.addEventListener('click', (e)=>{ e.preventDefault(); const res = compute(); dailyVal.innerText = res.total.toFixed(2) + ' kg CO₂'; yearlyVal.innerText = (res.total*365/1000).toFixed(2); results.classList.remove('hidden');
+      // chart
+      const labels = ['Travel','Energy','Diet','Waste']; const data = [res.travelCO2,res.energyCO2,res.dietCO2,res.wasteCO2];
+      if(chartObj) chartObj.destroy();
+      chartObj = new Chart(breakChart, {type:'pie', data:{labels,datasets:[{data, backgroundColor:['#34D399','#60A5FA','#FBBF24','#FB7185']}]}, options:{plugins:{legend:{position:'bottom'}}}});
+      // AI tips (local templating + rules)
+      generateTips(res);
+    });
+
+    function generateTips(res){
+      const parts = [];
+      // biggest contributor
+      const sorted = [['Travel',res.travelCO2],['Energy',res.energyCO2],['Diet',res.dietCO2],['Waste',res.wasteCO2]].sort((a,b)=>b[1]-a[1]);
+      const top = sorted[0];
+      parts.push(`<div class="p-3 bg-white/5 rounded"><strong>Biggest contributor:</strong> ${top[0]} — ${top[1].toFixed(2)} kg/day</div>`);
+      // tailored tips
+      if(res.travelCO2 > 2) parts.push(`<div class="p-3 bg-white/5 rounded">Try carpooling or public transport — reducing 5 km/day by car can save ~1.05 kg CO₂/day.</div>`);
+      if(res.energyCO2 > 2) parts.push(`<div class="p-3 bg-white/5 rounded">Switch to LED bulbs & reduce standby power. Small changes can cut energy by ~10-20%.</div>`);
+      if(res.dietCO2 > 4) parts.push(`<div class="p-3 bg-white/5 rounded">Try 2 meat-free days weekly — dietary shifts can significantly reduce yearly emissions.</div>`);
+      if(res.wasteCO2 > 0.5) parts.push(`<div class="p-3 bg-white/5 rounded">Reduce food waste & recycle more — composting food scraps prevents methane emissions.</div>`);
+      // weekly plan (simple templated)
+      const weekly = `<div class="p-3 bg-white/5 rounded"><strong>Weekly plan:</strong><ul class="list-disc pl-5"><li>2 meat-free dinners</li><li>Replace 1 car trip with bike/public transport</li><li>Compost food scraps this week</li></ul></div>`;
+      parts.push(weekly);
+      tipsArea.innerHTML = parts.join('');
+    }
+
+    // Save/load profile locally
+    saveProfile.addEventListener('click', (e)=>{ e.preventDefault(); const p = { carKm:carKm.value, ptKm:ptKm.value, flightMin:flightMin.value, elec:elec.value, diet:diet.value, waste:waste.value }; localStorage.setItem('ecosnap_profile', JSON.stringify(p)); alert('Profile saved locally'); });
+    window.addEventListener('load', ()=> { const p = JSON.parse(localStorage.getItem('ecosnap_profile')||'null'); if(p){ carKm.value=p.carKm; ptKm.value=p.ptKm; flightMin.value=p.flightMin; elec.value=p.elec; diet.value=p.diet; waste.value=p.waste; }});
+    resetBtn.addEventListener('click', ()=>{ if(confirm('Reset values?')){ carKm.value=ptKm.value=flightMin.value=elec.value=waste.value=''; diet.value='mixed'; results.classList.add('hidden'); if(chartObj) chartObj.destroy(); tipsArea.innerHTML=''; }});
+  </script>
+</body>
+</html>
