@@ -6,9 +6,9 @@
     "start": "node api/server.js"
   },
   "dependencies": {
-    "node-fetch": "^3.4.0"
+    "node-fetch": "^3"
   },
-  "engines": { "node": "18.x" },
+  "engines": { "node": "22.x" },
   "type": "module",
   "author": "Shital Parab",
   "license": "MIT"
