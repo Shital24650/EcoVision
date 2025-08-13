@@ -2,13 +2,16 @@
   "name": "ecovision",
   "version": "1.0.0",
   "description": "EcoVision - AI Sustainability Web App",
+  "main": "server.js",
   "scripts": {
-    "start": "node api/server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "node-fetch": "^3"
   },
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "type": "module",
   "author": "Shital Parab",
   "license": "MIT"
